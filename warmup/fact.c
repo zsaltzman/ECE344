@@ -1,8 +1,43 @@
 #include "common.h"
-
-int
-main()
+#include <string.h>
+#include <ctype.h>
+int fact(int order);
+int main(int argc, char *argv[])
 {
-	TBD();
-	return 0;
+  //TBD();
+  int argLen = strlen(argv[1]);
+  char *arg = argv[1];
+  int parse = 1;
+  // printf("%s\n",arg);
+  //printf("%d\n",argLen);
+  if(argc<2)
+    parse = 0;
+  for (int i = 0;i<argLen&&parse;i++)
+  {
+    if (!isdigit(arg[i]))
+      {
+	printf("Huh?\n");
+	parse = 0;
+      }
+  }
+  if (parse)
+    {
+      int order = atoi(arg);
+      if(order>12)
+	printf("Overflow\n");
+      else
+	printf("%d\n", fact(order));
+    }
+     return 0;
+}
+
+int fact(int  order)
+{
+  if (order <= 0)
+    printf("Huh?\n");
+  if (order == 1)
+    return 1;
+  else
+    return fact(order-1)*order;
+ 
 }

@@ -1,4 +1,4 @@
-CFLAGS := -g -Wall -Werror
+CFLAGS := -g -Wall -Werror -std=c99
 LOADLIBES := -lm
 TARGETS := hi hello words fact test_point test_sorted_points test_wc
 
