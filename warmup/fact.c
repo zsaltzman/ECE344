@@ -8,17 +8,19 @@ int main(int argc, char *argv[])
   int argLen = strlen(argv[1]);
   char *arg = argv[1];
   int parse = 1;
+  int i = 0;
   // printf("%s\n",arg);
   //printf("%d\n",argLen);
   if(argc<2)
     parse = 0;
-  for (int i = 0;i<argLen&&parse;i++)
+  while(i<argLen && parse)
   {
     if (!isdigit(arg[i]))
       {
 	printf("Huh?\n");
 	parse = 0;
       }
+    i++;
   }
   if (parse)
     {
