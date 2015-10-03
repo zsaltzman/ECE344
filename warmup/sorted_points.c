@@ -22,14 +22,13 @@ sp_init()
 	struct sorted_points *sp;
 
 	sp = (struct sorted_points *)malloc(sizeof(struct sorted_points));
-	assert(sp);
+       	assert(sp);
         sp->head = NULL;
 	sp->size = 0;
 	return sp;
 }
 
 //DO NOT USE THIS FUNCTION IF YOU WANT TO PRESERVE THE LIST, IT IS UNSAFE.
-//this is written to ensure delete_all_points works properly.
 void delete_point_destructive(point_entry *pe)
 {
   if (pe != NULL)
@@ -38,6 +37,18 @@ void delete_point_destructive(point_entry *pe)
       free(pe->val);
       free(pe);
     }
+}
+
+void print_list(struct sorted_points *sp)
+{
+  printf("contents of %p:\n",sp);
+  point_entry *pe = sp->head;
+  while (pe != NULL)
+    {
+      printf("%f,%f\n",point_X(pe->val),point_Y(pe->val));
+      pe = pe->next;
+    }
+  printf("end of list\n");
 }
 void delete_point(struct sorted_points *sp, point_entry *pe, point_entry *pe_prev)
 {
@@ -79,63 +90,78 @@ sp_add_point(struct sorted_points *sp, double x, double y)
   //	TBD();
   //create the point entry, starting with the point
   struct point *p = (struct point *)malloc(sizeof(struct point));
-  assert(p);
+  if (p == NULL)
+    return 0;
   point_set(p,x,y);
   point_entry *pe = (point_entry *)malloc(sizeof(point_entry));
   assert(pe);
   if (pe == NULL)
-    return 1;
+   {
+     free(p);
+     return 0;
+   }
+  
   pe->val = p;
   pe->next = NULL;
   //figure out where entry should go in list
-
   //if it's an empty list, it goes at the beginning
   if (sp->head == NULL)
     {
       pe->next = NULL;
       sp->head = pe;
-      return 0;
+      return 1;
     }
-
-  //otherwise we can assume it's safe to dereference head.
   point_entry *pe_prev = NULL;
-  for(point_entry *pe_search = sp->head;pe_search->next!=NULL;pe_search = pe_search->next)
+  point_entry *pe_search = sp->head;
+  struct point *origin = (struct point *)malloc(sizeof(struct point));
+  point_set(origin,0,0);
+  //otherwise we can assume it's safe to dereference head.
+  
+  while(pe_search != NULL)
     {
-      if (point_X(pe_search->val) > x)
+      //if the distance between pe_search pe is equal
+      if (point_distance(pe_search->val,origin) == point_distance(pe->val,origin))
 	{
-	  if (pe_prev == NULL)
+	  if (point_X(pe_search->val) == point_X(pe->val) && point_Y(pe_search->val) >= point_Y(pe->val))
 	    {
 	      pe->next = pe_search;
-	      sp->head = pe;
+	      if (pe_prev != NULL)
+		pe_prev->next = pe;
+	      else
+		sp->head = pe;
+	      free(origin);
+	      return 1;
 	    }
+	  while (pe_search != NULL && point_distance(pe_search->val,origin) == point_distance(pe->val,origin) && point_X(pe_search->val) < x)
+	    {
+	      pe_prev = pe_search;
+	      pe_search = pe_search->next;
+	    }
+	  pe->next = pe_search;
+	  if (pe_prev != NULL)
+	    pe_prev->next = pe;
 	  else
-	    {
-	      pe->next = pe_search;
-	      pe_prev->next = pe;
-	    }
-	  return 0;
+	    sp->head = pe;
+	  free(origin);
+	  return 1;
 	}
-      else if (point_X(pe_search->val) == x && point_Y(pe_search->val) > y)
+      if (point_distance(pe_search->val,origin) > point_distance(pe->val,origin))
 	{
-	  if (pe_prev == NULL)
-	    {
-	      pe->next = pe_search;
-	      sp->head = pe;
-	    }
+	  pe->next = pe_search;
+	  if (pe_prev != NULL)
+	    pe_prev->next = pe;
 	  else
-	    {
-	      pe->next = pe_search;
-	      pe_prev->next = pe;
-	    }
-	  return 0;
+	    sp->head = pe;
+	  free(origin);
+	  return 1;
 	}
-      //if the entry is greater than that of the last entry, it should go at the end
-      if (pe_search->next == NULL)
-	pe_search->next = pe;
-      
       pe_prev = pe_search;
+      pe_search = pe_search->next;
     }
-  return 0;
+  //we got to the end of the list and didn't find a greater or equal x value, i.e., element should go at the end.
+  pe_prev->next = pe;
+  free(origin);
+  return 1;
 }
 
 int
@@ -144,6 +170,8 @@ sp_remove_first(struct sorted_points *sp, struct point *ret)
   //	TBD();
   if (sp->head == NULL)
     return 0;
+  // printf("%f,%f\n",point_X(sp->head->val),point_Y(sp->head->val));
+  point_set(ret,point_X(sp->head->val),point_Y(sp->head->val));
   delete_point(sp,sp->head,NULL); //nothing before head, so pass NULL
   return 1;
 }
@@ -160,6 +188,7 @@ sp_remove_last(struct sorted_points *sp, struct point *ret)
       prev = p;
       p = p->next;
     }
+  point_set(ret,point_X(p->val),point_Y(p->val));
   delete_point(sp,p,prev);
   return 1;
 }
@@ -168,26 +197,33 @@ int
 sp_remove_by_index(struct sorted_points *sp, int index, struct point *ret)
 {
   //	TBD();
-  int i = index;
+  int i = 0;
   point_entry *p = sp->head;
   point_entry *prev = NULL;
   if (p == NULL)
     return 0;
-  while (i>0)
+  while (i!=index && p != NULL)
     {
-      if (p == NULL)
-	return 0;
+      i++;
       prev = p;
       p = p->next;
-      i--;
     }
-  ret = p->val;
-  delete_point(sp,p,prev);
+  if (p==NULL)
+    return 0;
+  else if (i==index)
+    {
+      point_set(ret,point_X(p->val),point_Y(p->val));
+      delete_point(sp,p,prev);
+    }
   return 1;
 }
 
-int
-sp_delete_duplicates(struct sorted_points *sp)
+
+
+
+
+
+int sp_delete_duplicates(struct sorted_points *sp)
 {
   //TBD();
   point_entry *p = sp->head;
@@ -204,7 +240,7 @@ sp_delete_duplicates(struct sorted_points *sp)
 	  if (p->next == NULL) //if we moved p to the end of the list by deleting, end the function.
 	    return count;
 	  p_next = p->next; //we don't increment p here because there may be multiple duplicates of the same entry.  
-	}
+	} 
       else
 	{
 	  p = p_next;
