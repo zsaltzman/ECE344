@@ -23,20 +23,20 @@ struct wc *
 wc_init(char *word_array, long size)
 {
 	struct wc *wc;
-
+	//	printf("Beginning Operation size = %ld.\n",size);
 	wc = (struct wc *)malloc(sizeof(struct wc));
 	assert(wc);
 	wc->word_table = (table_entry **)malloc(size * sizeof(table_entry *));
 	assert(wc->word_table);
 	wc->table_size = size;
-	long i = 0;
+	/*	long i = 0;
 	while (i<size)
 	  {
 	  wc->word_table[i] = (table_entry *)malloc(sizeof(table_entry));
 	  wc->word_table[i]->next = NULL;
 	  wc->word_table[i]->word = NULL;
 	  i++;
-	  }
+	  }*/
 	wc_populate(wc,word_array);
 	return wc;
 }
@@ -62,10 +62,12 @@ int hash(char *str, long table_size)
 int table_add(struct wc *wc, char *str, int index)
 {
   //if there's no valid entry, set one and return
-  if(wc->word_table[index]->word == NULL)
+  if(wc->word_table[index] == NULL)
     {
+      wc->word_table[index] = (table_entry *)malloc(sizeof(table_entry));
       wc->word_table[index]->count = 1;
       wc->word_table[index]->word = str;
+      wc->word_table[index]->next = NULL;
       return 1;
     }
   //otherwise we're going to have to check to see if our word is here.
@@ -146,7 +148,7 @@ wc_output(struct wc *wc)
   long i = 0;
   while(i<wc->table_size)
     {
-      if(wc->word_table[i]->word != NULL)
+      if(wc->word_table[i] != NULL)
 	print_table_entry(wc->word_table[i]);
       i++;
     }
@@ -167,7 +169,9 @@ wc_destroy(struct wc *wc)
   int i = 0;
   while(i < wc->table_size)
     {
-      table_entry_delete(wc->word_table[i]);
+      //if we have an entry here, do a recursive delete
+      if(wc->word_table[i] != NULL)
+	table_entry_delete(wc->word_table[i]);
       i++;
     }
   free(wc->word_table);
