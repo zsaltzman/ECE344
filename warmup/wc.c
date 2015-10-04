@@ -48,7 +48,7 @@ int hash(char *str, long table_size)
   int hash = 5381;
   int c = 0;
 
-   while ((c = *str++)!=0)
+  while ((c = *str++)!=0)
      {
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
      }
@@ -107,7 +107,7 @@ void wc_populate(struct wc *wc, char *input)
 	{
 	  if(word_size != 0)
 	  {
-	    table_word = (char *)malloc(word_size*sizeof(char)); //allocate an array of characters the size of the word.
+	    table_word = (char *)malloc((word_size+1)*sizeof(char)); //allocate an array of characters the size of the word, plus the null character at the end.
 	    assert(table_word);
 	    //read the word into table_word
 	    while (j<word_size)
@@ -115,12 +115,13 @@ void wc_populate(struct wc *wc, char *input)
 		table_word[j] = input[loc_last_word+j];
 		j++;
 	      }
-	    j = 0;
-	    word_size = 0;
+	    table_word[j] = '\0'; //add the null
 	    h = hash(table_word, wc->table_size);
 	    table_add(wc,table_word,h);
-	    loc_last_word = i+1; //set the location of the last word to the letter after the space.
 	  }
+	    loc_last_word = i+1; //set the location of the last word to the letter after the space.
+	    j = 0;
+	    word_size = 0;
 	}
       else
 	{
