@@ -197,6 +197,7 @@ struct wait_queue *thread_wait_queue;
 struct wait_queue *lock_wait_queue;
 struct thread *running_thread;
 int tid_list[THREAD_MAX_THREADS];
+Tid thread_with_lock = -1;
 
 void
 thread_init(void)
@@ -375,7 +376,7 @@ thread_yield(Tid want_tid)
   queue_node *qn = (queue_node *)malloc(sizeof(queue_node));
   qn->node_t = running_thread;
   enqueue(ready_queue,qn);
-  Tid oldval = running_thread->thread_id;
+  // Tid oldval = running_thread->thread_id;
   getcontext(&qn->node_t->context);
   if(running_thread->pc_yield == 0)
    {
@@ -390,7 +391,7 @@ thread_yield(Tid want_tid)
        running_thread = dequeue_id(ready_queue, want_tid);
    
      ret = running_thread->thread_id;
-     printf("thread %d yielding to %d\n",oldval,ret);
+     // printf("thread %d yielding to %d\n",oldval,ret);
      setcontext(&running_thread->context);
    }
   
@@ -636,10 +637,15 @@ lock_acquire(struct lock *lock)
 	interrupts_off(); //interrupts have to be off while checking the lock, obviously.
 	assert(lock != NULL);
 	while(lock->locked)
+	  {
 	  thread_sleep(lock->lock_queue);
-	printf("thread %d acquired lock.\n",running_thread->thread_id);
+	  interrupts_off(); //if interrupts are on when threads wake up from this point, there can be a race to get the lock.
+	  }
+	
+	//printf("thread %d acquired lock.\n",running_thread->thread_id);
 	lock->locked = 1;
 	running_thread->holding_lock = 1;
+	thread_with_lock = running_thread->thread_id;
 	interrupts_on(); //we should allow other threads to interrupt us after this point.
 }
 
@@ -653,6 +659,7 @@ lock_release(struct lock *lock)
 	    // printf("thread %d releasing the lock\n",running_thread->thread_id);
 	    lock->locked = 0;
 	    running_thread->holding_lock = 0;
+	    thread_with_lock = -1;
 	    thread_wakeup(lock->lock_queue,1);
 	  }
 	interrupts_on();
@@ -694,10 +701,11 @@ cv_wait(struct cv *cv, struct lock *lock)
 	  {
 	    interrupts_off();
 	    lock_release(lock);
-	    printf("thread %d releasing lock and yielding\n",running_thread->thread_id);
+	    //printf("thread %d releasing lock and yielding\n",running_thread->thread_id);
 	    thread_yield_from_wait(cv->cv_queue->waiting_queue,THREAD_ANY);
 	    interrupts_on();
 	  }
+	lock_acquire(lock);
 }
 
 void
@@ -708,7 +716,10 @@ cv_signal(struct cv *cv, struct lock *lock)
 	if(running_thread->holding_lock)
 	  thread_wakeup(cv->cv_queue,0);
 	else
+	  {
 	  printf("thread %d attempted to signal without having the lock.\n",running_thread->thread_id);
+	  printf("thread holding the lock is %d\n",thread_with_lock);
+	  }
 }
 
 void
