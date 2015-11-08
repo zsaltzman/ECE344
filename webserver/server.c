@@ -42,15 +42,14 @@ main(int argc, char *argv[])
 		fprintf(stderr, "arguments should be > 0\n");
 		usage(argv[0]);
 	}
-
 	sv = server_init(nr_threads, max_requests, max_cache_size);
-
+	
 	listenfd = open_listenfd(port);
+	
 	while (1) {
 		clientlen = sizeof(clientaddr);
 		SYS(connfd = accept(listenfd, (struct sockaddr *)&clientaddr,
 				    (socklen_t *) & clientlen));
-
 		/* serve the request */
 		server_request(sv, connfd);
 	}
